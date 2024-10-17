@@ -34,6 +34,11 @@ namespace KollabR8.Application
                 throw new Exception("Email already exists!");
             }
 
+            if(await _context.Users.AnyAsync(u=>u.Username == username))
+            {
+                throw new Exception("Username already exists!");
+            }
+
             var user = new User
             {
                 Username = username,
