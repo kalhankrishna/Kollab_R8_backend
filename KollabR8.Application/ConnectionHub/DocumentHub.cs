@@ -9,14 +9,30 @@ namespace KollabR8.Application.ConnectionHub
 {
     public class DocumentHub : Hub
     {
+        public override async Task OnConnectedAsync()
+        {
+            var username = Context.User.Identity.Name;
+            await Clients.All.SendAsync("UserConnected", username);
+            await base.OnConnectedAsync();
+        }
+
+        public override async Task OnDisconnectedAsync(Exception exception)
+        {
+            var username = Context.User.Identity.Name;
+            await Clients.All.SendAsync("UserDisconnected", username);
+            await base.OnDisconnectedAsync(exception);
+        }
+
         public async Task JoinDocumentGroup(string documentId)
         {
-            await Groups.AddToGroupAsync(Context.ConnectionId, documentId);
+            var username = Context.User.Identity.Name;
+            await Groups.AddToGroupAsync(username, documentId);
         }
 
         public async Task LeaveDocumentGroup(string documentId)
         {
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, documentId);
+            var username = Context.User.Identity.Name;
+            await Groups.RemoveFromGroupAsync(username, documentId);
         }
 
         public async Task SendDocumentUpdate(string documentId, string content)

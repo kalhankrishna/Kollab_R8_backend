@@ -10,7 +10,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace KollabR8.Application.Services
@@ -135,7 +134,7 @@ namespace KollabR8.Application.Services
 
             if((document.Collaborators != null && !document.Collaborators.Contains(updatingUser)) || document.OwnerId != userId)
             {
-                throw new UnauthorizedAccessException("You do not have permission to update this document!");
+                throw new UnauthorizedAccessException("You do not have permission to modify this document!");
             }
 
             document.Title = title;
@@ -208,6 +207,30 @@ namespace KollabR8.Application.Services
         {
             var documents = await _dbContext.Documents.Include(d => d.Owner).Include(d => d.Collaborators).Where(d => d.Collaborators.Any(c => c.Id == userId)).ToListAsync();
             return documents;
+        }
+
+        public async Task<Document> ModifyAccessAsync(int documentId, int userId, string accessLevel)
+        {
+            var document = await _dbContext.Documents.FirstOrDefaultAsync(d=>d.Id==documentId);
+
+            if (document == null)
+            {
+                throw new Exception("Document not found!");
+            }
+
+            if (document.OwnerId != userId)
+            {
+                throw new UnauthorizedAccessException("You do not have permission to modify the access level of this document!");
+            }
+
+            document.Access = accessLevel;
+
+            _dbContext.Documents.Update(document);
+            await _dbContext.SaveChangesAsync();
+
+            await _hubContext.Clients.Group(document.Id.ToString()).SendAsync("NotifyAccessUpdated", documentId);
+
+            return document;
         }
     }
 }

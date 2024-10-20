@@ -1,5 +1,7 @@
 using KollabR8.Application;
 using KollabR8.Application.ConnectionHub;
+using KollabR8.Application.Interfaces;
+using KollabR8.Application.Services;
 using KollabR8.Domain.Entities;
 using KollabR8.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -44,6 +46,9 @@ namespace KollabR8
             services.AddDbContext<AppDbContext>(options =>
                 options.UseMySql(Configuration.GetConnectionString("DefaultConnection"),
                                  new MySqlServerVersion(new Version(8, 0, 23))));
+            services.AddIdentity<User, IdentityRole<int>>()
+                .AddEntityFrameworkStores<AppDbContext>()
+                .AddDefaultTokenProviders();
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -64,6 +69,7 @@ namespace KollabR8
             });
 
             services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<IDocumentService, DocumentService>();
             services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
         }
 
@@ -80,6 +86,8 @@ namespace KollabR8
             app.UseHttpsRedirection();
 
             app.UseRouting();
+
+            app.UseAuthentication();
 
             app.UseAuthorization();
 

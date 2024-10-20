@@ -16,5 +16,6 @@ namespace KollabR8.Application.Interfaces
         Task<bool> DeleteDocumentAsync(int documentId, int userId);
         Task<List<Document>> GetOwnedDocumentsbyUser(int userId);
         Task<List<Document>> GetCollaboratingDocumentsbyUser(int userId);
+        Task<Document> ModifyAccessAsync(int documentId, int userId, string accessLevel);
     }
 }

@@ -6,12 +6,13 @@ using System.Threading.Tasks;
 using System.Configuration;
 using Microsoft.EntityFrameworkCore;
 using KollabR8.Domain.Entities;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace KollabR8.Infrastructure
 {
-    public class AppDbContext : DbContext
+    public class AppDbContext : IdentityDbContext<User, IdentityRole<int>, int>
     {
-        public DbSet<User> Users { get; set; }
         public DbSet<Document> Documents { get; set; }
 
         // Constructor for runtime use with DI
@@ -25,7 +26,7 @@ namespace KollabR8.Infrastructure
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.Entity<User>().HasData(
-                new User { Id = 1, Username = "admin", Email = "admin@example.com", PasswordHash = "hashed_password" }
+                new User { Id = 1, UserName = "admin", Email = "admin@example.com", PasswordHash = "hashed_password" }
             );
 
             // Define the many-to-many relationship between Users and Documents

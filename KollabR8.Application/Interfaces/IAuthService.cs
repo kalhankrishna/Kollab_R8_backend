@@ -10,7 +10,7 @@ namespace KollabR8.Application
     public interface IAuthService
     {
         Task<User> RegisterAsync(string username, string email, string password);
-        Task<string> LoginAsync(string username, string email, string password);
+        Task<string> LoginAsync(string userCredential, string password);
         string GenerateJwtToken(User user);
     }
 }
