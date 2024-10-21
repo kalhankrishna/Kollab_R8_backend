@@ -74,15 +74,7 @@ namespace KollabR8.Application.Services
                 Collaborators = document.Collaborators
             };
 
-            //await _hubContext.Groups.AddToGroupAsync(ownerId.ToString(), document.Id.ToString());
-
-            /*foreach (var collaborator in collaborators)
-            {
-                await _hubContext.Groups.AddToGroupAsync(collaborator.Id.ToString(), document.Id.ToString());
-                await _hubContext.Clients.User(collaborator.Id.ToString()).SendAsync("NotifyDocumentCreated", documentDto);
-            }*/
-
-            await _hubContext.Clients.Group(document.Id.ToString()).SendAsync("NotifyDocumentCreated", documentDto);
+            //await _hubContext.Clients.Group(document.Id.ToString()).SendAsync("NotifyDocumentCreated", documentDto);
 
             return documentDto;
         }
@@ -122,7 +114,7 @@ namespace KollabR8.Application.Services
             return documentDto;
         }
 
-        public async Task<DocumentDto> UpdateDocumentAsync(int documentId, string title, string content, string accessLevel, int userId)
+        public async Task<DocumentDto> UpdateDocumentAsync(int documentId, string title, string content, int userId)
         {
             var document = await _dbContext.Documents.FirstOrDefaultAsync(d => d.Id == documentId);
             var updatingUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
@@ -138,7 +130,6 @@ namespace KollabR8.Application.Services
             }
 
             document.Title = title;
-            document.Access = accessLevel;
             document.LastUpdatedAt = DateTime.UtcNow;
 
             await File.WriteAllTextAsync(document.FilePath, content);
@@ -160,7 +151,7 @@ namespace KollabR8.Application.Services
                 Collaborators = document.Collaborators
             };
 
-            await _hubContext.Clients.Group(documentId.ToString()).SendAsync("NotifyDocumentUpdate", documentDto);
+            //await _hubContext.Clients.Group(documentId.ToString()).SendAsync("NotifyDocumentUpdated", documentDto);
 
             return documentDto;
         }
@@ -186,13 +177,7 @@ namespace KollabR8.Application.Services
             _dbContext.Documents.Remove(document);
             await _dbContext.SaveChangesAsync();
 
-            /*foreach (var collaborator in document.Collaborators)
-            {
-                await _hubContext.Clients.User(collaborator.Id.ToString()).SendAsync("NotifyDocumentDeleted", documentId);
-                await _hubContext.Groups.RemoveFromGroupAsync(collaborator.Id.ToString(), documentId.ToString());
-            }*/
-
-            await _hubContext.Clients.Group(document.Id.ToString()).SendAsync("NotifyDocumentDeleted", documentId);
+            //await _hubContext.Clients.Group(document.Id.ToString()).SendAsync("NotifyDocumentDeleted", documentId);
 
             return true;
         }
@@ -228,7 +213,7 @@ namespace KollabR8.Application.Services
             _dbContext.Documents.Update(document);
             await _dbContext.SaveChangesAsync();
 
-            await _hubContext.Clients.Group(document.Id.ToString()).SendAsync("NotifyAccessUpdated", documentId);
+            //await _hubContext.Clients.Group(document.Id.ToString()).SendAsync("NotifyAccessUpdated", documentId);
 
             return document;
         }
