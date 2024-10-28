@@ -33,153 +33,170 @@ namespace KollabR8.Application.Services
             }
         }
 
-        public async Task<DocumentDto> CreateDocumentAsync(string title, string content, string accessLevel, int ownerId, List<int>? collaboratorIds=null)
+        public async Task<int> CreateDocumentAsync(string title, string accessLevel, int ownerId, List<int>? collaboratorIds=null)
         {
-            var filePath = Path.Combine(_documentsRootPath, $"{Guid.NewGuid()}.json");
-
-            await File.WriteAllTextAsync(filePath, content);
-
-            var collaborators = new List<User>();
-
-            if(collaboratorIds!=null && collaboratorIds.Any())
+            try
             {
-                collaborators = await _dbContext.Users.Where(u => collaboratorIds.Contains(u.Id)).ToListAsync();
+                var filePath = Path.Combine(_documentsRootPath, $"{Guid.NewGuid()}.json");
+
+                File.Create(filePath);
+
+                //await File.WriteAllTextAsync(filePath, content);
+
+                var collaborators = new List<User>();
+
+                if (collaboratorIds != null && collaboratorIds.Any())
+                {
+                    collaborators = await _dbContext.Users.Where(u => collaboratorIds.Contains(u.Id)).ToListAsync();
+                }
+
+                var document = new Document
+                {
+                    Title = title,
+                    FilePath = filePath,
+                    CreatedAt = DateTime.UtcNow,
+                    LastUpdatedAt = DateTime.UtcNow,
+                    Access = accessLevel,
+                    OwnerId = ownerId,
+                    Collaborators = collaborators
+                };
+
+                _dbContext.Documents.Add(document);
+                await _dbContext.SaveChangesAsync();
+
+                //await _hubContext.Clients.Group(document.Id.ToString()).SendAsync("NotifyDocumentCreated", documentDto);
+
+                return document.Id;
             }
-
-            var document = new Document
+            catch
             {
-                Title = title,
-                FilePath = filePath,
-                CreatedAt = DateTime.UtcNow,
-                LastUpdatedAt = DateTime.UtcNow,
-                Access = accessLevel,
-                OwnerId = ownerId,
-                Collaborators = collaborators
-            };
-
-            _dbContext.Documents.Add(document);
-            await _dbContext.SaveChangesAsync();
-
-            var documentDto = new DocumentDto
-            {
-                Id = document.Id,
-                Title = document.Title,
-                FilePath = document.FilePath,
-                Content = content,
-                Access = document.Access,
-                CreatedAt = document.CreatedAt,
-                LastUpdatedAt = document.LastUpdatedAt,
-                OwnerId = document.OwnerId,
-                Owner = document.Owner,
-                Collaborators = document.Collaborators
-            };
-
-            //await _hubContext.Clients.Group(document.Id.ToString()).SendAsync("NotifyDocumentCreated", documentDto);
-
-            return documentDto;
+                throw;
+            }
         }
 
         public async Task<DocumentDto> GetDocumentbyIdAsync(int documentId, int userId)
         {
-            var document = await _dbContext.Documents.Include(d => d.Owner).Include(d => d.Collaborators).FirstOrDefaultAsync(d => d.Id == documentId);
-
-            if (document == null)
+            try
             {
-                throw new Exception("Document not found!");
+                var document = await _dbContext.Documents.Include(d => d.Owner).Include(d => d.Collaborators).FirstOrDefaultAsync(d => d.Id == documentId);
+
+                if (document == null)
+                {
+                    throw new Exception("Document not found!");
+                }
+
+                var user = await _dbContext.Users.FindAsync(userId);
+
+                if (document.Owner != user || !document.Collaborators.Contains(user) || document.Access != "Public")
+                {
+                    throw new UnauthorizedAccessException("You do not have permission to view this document!");
+                }
+
+                var contentJson = await File.ReadAllTextAsync(document.FilePath);
+
+                var documentDto = new DocumentDto
+                {
+                    Id = documentId,
+                    Title = document.Title,
+                    FilePath = document.FilePath,
+                    Content = contentJson,
+                    CreatedAt = document.CreatedAt,
+                    LastUpdatedAt = document.LastUpdatedAt,
+                    Access = document.Access,
+                    OwnerId = document.OwnerId,
+                    Owner = document.Owner,
+                    Collaborators = document.Collaborators
+                };
+
+                return documentDto;
             }
-
-            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
-
-            if(document.OwnerId != userId || !document.Collaborators.Contains(user) || document.Access != "Public")
+            catch
             {
-                throw new UnauthorizedAccessException("You do not have permission to view this document!");
+                throw;
             }
-
-            var contentJson = await File.ReadAllTextAsync(document.FilePath);
-
-            var documentDto = new DocumentDto
-            {
-                Id = documentId,
-                Title = document.Title,
-                FilePath = document.FilePath,
-                Content = contentJson,
-                CreatedAt = document.CreatedAt,
-                LastUpdatedAt = document.LastUpdatedAt,
-                Access = document.Access,
-                OwnerId = document.OwnerId,
-                Owner = document.Owner,
-                Collaborators = document.Collaborators
-            };
-
-            return documentDto;
         }
 
         public async Task<DocumentDto> UpdateDocumentAsync(int documentId, string title, string content, int userId)
         {
-            var document = await _dbContext.Documents.FirstOrDefaultAsync(d => d.Id == documentId);
-            var updatingUser = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
-
-            if (document == null)
+            try
             {
-                throw new Exception("Document not found!");
+                var document = await _dbContext.Documents.Include(d => d.Owner).Include(d => d.Collaborators).FirstOrDefaultAsync(d => d.Id == documentId);
+                var updatingUser = await _dbContext.Users.FindAsync(userId);
+
+                if (document == null)
+                {
+                    throw new Exception("Document not found!");
+                }
+
+                if ((document.Collaborators != null && !document.Collaborators.Contains(updatingUser)) || document.Owner != updatingUser)
+                {
+                    throw new UnauthorizedAccessException("You do not have permission to modify this document!");
+                }
+
+                document.Title = title;
+                document.LastUpdatedAt = DateTime.UtcNow;
+
+                await File.WriteAllTextAsync(document.FilePath, content);
+
+                _dbContext.Documents.Update(document);
+                await _dbContext.SaveChangesAsync();
+
+                var documentDto = new DocumentDto
+                {
+                    Id = documentId,
+                    Title = document.Title,
+                    FilePath = document.FilePath,
+                    Content = await File.ReadAllTextAsync(document.FilePath),
+                    CreatedAt = document.CreatedAt,
+                    LastUpdatedAt = document.LastUpdatedAt,
+                    Access = document.Access,
+                    OwnerId = document.OwnerId,
+                    Owner = document.Owner,
+                    Collaborators = document.Collaborators
+                };
+
+                //await _hubContext.Clients.Group(documentId.ToString()).SendAsync("NotifyDocumentUpdated", documentDto);
+
+                return documentDto;
             }
-
-            if((document.Collaborators != null && !document.Collaborators.Contains(updatingUser)) || document.OwnerId != userId)
+            catch
             {
-                throw new UnauthorizedAccessException("You do not have permission to modify this document!");
+                throw;
             }
-
-            document.Title = title;
-            document.LastUpdatedAt = DateTime.UtcNow;
-
-            await File.WriteAllTextAsync(document.FilePath, content);
-
-            _dbContext.Documents.Update(document);
-            await _dbContext.SaveChangesAsync();
-
-            var documentDto = new DocumentDto
-            {
-                Id = documentId,
-                Title = document.Title,
-                FilePath = document.FilePath,
-                Content = await File.ReadAllTextAsync(document.FilePath),
-                CreatedAt = document.CreatedAt,
-                LastUpdatedAt = document.LastUpdatedAt,
-                Access = document.Access,
-                OwnerId = document.OwnerId,
-                Owner = document.Owner,
-                Collaborators = document.Collaborators
-            };
-
-            //await _hubContext.Clients.Group(documentId.ToString()).SendAsync("NotifyDocumentUpdated", documentDto);
-
-            return documentDto;
         }
 
         public async Task<bool> DeleteDocumentAsync(int documentId, int userId)
         {
-            var document = await _dbContext.Documents.Include(d=>d.Collaborators).FirstOrDefaultAsync(d => d.Id == documentId);
-            if (document == null)
+            try
             {
-                return false;
-            }
+                var document = await _dbContext.Documents.Include(d => d.Owner).Include(d => d.Collaborators).FirstOrDefaultAsync(d => d.Id == documentId);
+                var user = await _dbContext.Users.FindAsync(userId);
+                if (document == null)
+                {
+                    return false;
+                }
 
-            if(document.OwnerId != userId)
+                if (document.Owner != user)
+                {
+                    throw new UnauthorizedAccessException("You do not have permission to delete this document!");
+                }
+
+                if (File.Exists(document.FilePath))
+                {
+                    File.Delete(document.FilePath);
+                }
+
+                _dbContext.Documents.Remove(document);
+                await _dbContext.SaveChangesAsync();
+
+                //await _hubContext.Clients.Group(document.Id.ToString()).SendAsync("NotifyDocumentDeleted", documentId);
+
+                return true;
+            }
+            catch
             {
-                throw new UnauthorizedAccessException("You do not have permission to delete this document!");
+                throw;
             }
-
-            if (File.Exists(document.FilePath))
-            {
-                File.Delete(document.FilePath);
-            }
-
-            _dbContext.Documents.Remove(document);
-            await _dbContext.SaveChangesAsync();
-
-            //await _hubContext.Clients.Group(document.Id.ToString()).SendAsync("NotifyDocumentDeleted", documentId);
-
-            return true;
         }
 
         public async Task<List<Document>> GetOwnedDocumentsbyUser(int userId)
@@ -196,26 +213,34 @@ namespace KollabR8.Application.Services
 
         public async Task<Document> ModifyAccessAsync(int documentId, int userId, string accessLevel)
         {
-            var document = await _dbContext.Documents.FirstOrDefaultAsync(d=>d.Id==documentId);
-
-            if (document == null)
+            try
             {
-                throw new Exception("Document not found!");
-            }
+                var document = await _dbContext.Documents.FirstOrDefaultAsync(d => d.Id == documentId);
+                var user = await _dbContext.Users.FindAsync(userId);
 
-            if (document.OwnerId != userId)
+                if (document == null)
+                {
+                    throw new Exception("Document not found!");
+                }
+
+                if (document.Owner != user)
+                {
+                    throw new UnauthorizedAccessException("You do not have permission to modify the access level of this document!");
+                }
+
+                document.Access = accessLevel;
+
+                _dbContext.Documents.Update(document);
+                await _dbContext.SaveChangesAsync();
+
+                //await _hubContext.Clients.Group(document.Id.ToString()).SendAsync("NotifyAccessUpdated", documentId);
+
+                return document;
+            }
+            catch
             {
-                throw new UnauthorizedAccessException("You do not have permission to modify the access level of this document!");
+                throw;
             }
-
-            document.Access = accessLevel;
-
-            _dbContext.Documents.Update(document);
-            await _dbContext.SaveChangesAsync();
-
-            //await _hubContext.Clients.Group(document.Id.ToString()).SendAsync("NotifyAccessUpdated", documentId);
-
-            return document;
         }
     }
 }

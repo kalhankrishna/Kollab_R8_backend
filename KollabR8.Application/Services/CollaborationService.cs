@@ -22,118 +22,101 @@ namespace KollabR8.Application.Services
 
         public async Task<bool> AddCollaboratorAsync(int documentId, int userId, int collaboratorId)
         {
-            var document = await _dbContext.Documents.Include(d => d.Owner).Include(d => d.Collaborators).FirstOrDefaultAsync(d => d.Id == documentId);
-
-            if(document == null)
+            try
             {
-                throw new Exception("Document not found!");
-            }
+                var document = await _dbContext.Documents.Include(d => d.Owner).Include(d => d.Collaborators).FirstOrDefaultAsync(d => d.Id == documentId);
+                var user = await _dbContext.Users.FindAsync(userId);
 
-            if(document.OwnerId != userId)
-            {
-                throw new UnauthorizedAccessException("Only the document owner can add collaborators!");
-            }
+                if (document == null)
+                {
+                    throw new Exception("Document not found!");
+                }
 
-            var collaborator = await _dbContext.Users.FirstOrDefaultAsync(u=>u.Id==collaboratorId);
+                if (document.Owner != user)
+                {
+                    throw new UnauthorizedAccessException("Only the document owner can add collaborators!");
+                }
 
-            if(collaborator == null)
-            {
-                throw new Exception("Collaborator not found!");
-            }
-
-            if (!document.Collaborators.Contains(collaborator))
-            {
-                document.Collaborators.Add(collaborator);
-                await _dbContext.SaveChangesAsync();
-                return true;
-            }
-
-            return false;
-        }
-
-        public async Task<List<string>> AddMultipleCollaboratorsAsync(int documentId, int userId, List<int> collaboratorIds)
-        {
-            var document = await _dbContext.Documents.Include(d => d.Owner).Include(d => d.Collaborators).FirstOrDefaultAsync(d => d.Id == documentId);
-
-            if (document == null)
-            {
-                throw new Exception("Document not found!");
-            }
-
-            if (document.OwnerId != userId)
-            {
-                throw new UnauthorizedAccessException("Only the document owner can add collaborators!");
-            }
-
-            var failedCollaborators = new List<string>();
-
-            foreach(var collaboratorId in collaboratorIds)
-            {
-                var collaborator = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == collaboratorId);
+                var collaborator = await _dbContext.Users.FindAsync(collaboratorId);
 
                 if (collaborator == null)
                 {
-                    failedCollaborators.Add($"User with ID {collaboratorId} not found.");
-                    continue;
+                    throw new Exception("Collaborator not found!");
                 }
 
-                if (document.Collaborators.Any(c => c.Id == collaboratorId))
+                if (!document.Collaborators.Contains(collaborator))
                 {
-                    failedCollaborators.Add($"User with ID {collaboratorId} is already a collaborator.");
-                    continue;
+                    document.Collaborators.Add(collaborator);
+                    await _dbContext.SaveChangesAsync();
+                    return true;
                 }
 
-                document.Collaborators.Add(collaborator);
+                return false;
             }
-
-            await _dbContext.SaveChangesAsync();
-
-            return failedCollaborators;
+            catch
+            {
+                throw;
+            }
         }
 
         public async Task<bool> RemoveCollaboratorAsync(int documentId, int userId, int collaboratorId)
         {
-            var document = await _dbContext.Documents.Include(d => d.Owner).Include(d => d.Collaborators).FirstOrDefaultAsync(d => d.Id == documentId);
-
-            if (document == null)
+            try
             {
-                throw new Exception("Document not found!");
-            }
+                var document = await _dbContext.Documents.Include(d => d.Owner).Include(d => d.Collaborators).FirstOrDefaultAsync(d => d.Id == documentId);
+                var user = await _dbContext.Users.FindAsync(userId);
 
-            if (document.OwnerId != userId)
+                if (document == null)
+                {
+                    throw new Exception("Document not found!");
+                }
+
+                if (document.Owner != user)
+                {
+                    throw new UnauthorizedAccessException("Only the document owner can add collaborators!");
+                }
+
+                var collaborator = await _dbContext.Users.FindAsync(collaboratorId);
+
+                if (collaborator == null)
+                {
+                    throw new Exception("Collaborator not found!");
+                }
+
+                if (document.Collaborators.Contains(collaborator))
+                {
+                    document.Collaborators.Remove(collaborator);
+                    await _dbContext.SaveChangesAsync();
+                    return true;
+                }
+
+                return false;
+            }
+            catch
             {
-                throw new UnauthorizedAccessException("Only the document owner can add collaborators!");
+                throw;
             }
-
-            var collaborator = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == collaboratorId);
-
-            if (collaborator == null)
-            {
-                throw new Exception("Collaborator not found!");
-            }
-
-            if (document.Collaborators.Contains(collaborator))
-            {
-                document.Collaborators.Remove(collaborator);
-                await _dbContext.SaveChangesAsync();
-                return true;
-            }
-
-            return false;
         }
 
         public async Task<List<User>> GetCollaboratorsAsync(int documentId)
         {
-            var document = await _dbContext.Documents
+            try
+            {
+                var document = await _dbContext.Documents
                 .Include(d => d.Collaborators)
                 .FirstOrDefaultAsync(d => d.Id == documentId);
 
-            if (document == null)
-            {
-                throw new Exception("Document not found");
-            }
+                if (document == null)
+                {
+                    throw new Exception("Document not found");
+                }
 
-            return document.Collaborators.ToList();
+                return document.Collaborators.ToList();
+            }
+            catch
+            {
+                throw;
+            }
         }
     }
 }

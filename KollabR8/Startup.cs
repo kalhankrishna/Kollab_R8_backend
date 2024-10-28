@@ -39,6 +39,7 @@ namespace KollabR8
         {
             services.AddSignalR();
             services.AddControllers();
+            //services.Configure<JwtSettings>(Configuration.GetSection("JwtSettings"));
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "KollabR8", Version = "v1" });
@@ -70,6 +71,7 @@ namespace KollabR8
 
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IDocumentService, DocumentService>();
+            services.AddScoped<ICollaborationService, CollaborationService>();
             services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
         }
 

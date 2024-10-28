@@ -12,7 +12,7 @@ namespace KollabR8.Application.ConnectionHub
     public class DocumentHub : Hub
     {
         private readonly IDocumentService _documentService;
-        private static readonly ConcurrentDictionary<string, string> OnlineUsers = new ConcurrentDictionary<string, string>();
+        private static readonly ConcurrentDictionary<string, HashSet<string>> OnlineUsers = new ConcurrentDictionary<string, HashSet<string>>();
 
         public DocumentHub(IDocumentService documentService)
         {
@@ -24,7 +24,13 @@ namespace KollabR8.Application.ConnectionHub
             var username = Context.User.Identity.Name;
             var connectionId = Context.ConnectionId;
 
-            OnlineUsers[username] = connectionId;
+            OnlineUsers.AddOrUpdate(username,
+                _ => new HashSet<string> { connectionId },
+                (_, connections) =>
+                {
+                    connections.Add(connectionId);
+                    return connections;
+                });
 
             await Clients.All.SendAsync("UserConnected", username);
             await base.OnConnectedAsync();
@@ -33,9 +39,18 @@ namespace KollabR8.Application.ConnectionHub
         public override async Task OnDisconnectedAsync(Exception exception)
         {
             var username = Context.User.Identity.Name;
-            OnlineUsers.TryRemove(username, out _);
+            var connectionId = Context.ConnectionId;
 
-            await Clients.All.SendAsync("UserDisconnected", username);
+            if (OnlineUsers.TryGetValue(username, out var connections))
+            {
+                connections.Remove(connectionId);
+                if (connections.Count == 0)
+                {
+                    OnlineUsers.TryRemove(username, out _);
+                    await Clients.All.SendAsync("UserDisconnected", username);
+                };
+            }
+
             await base.OnDisconnectedAsync(exception);
         }
 
@@ -46,20 +61,26 @@ namespace KollabR8.Application.ConnectionHub
 
         public async Task JoinDocumentGroup(string documentId)
         {
-            var username = Context.User.Identity.Name;
-            await Groups.AddToGroupAsync(username, documentId);
+            await Groups.AddToGroupAsync(Context.ConnectionId, documentId);
         }
 
         public async Task LeaveDocumentGroup(string documentId)
         {
-            var username = Context.User.Identity.Name;
-            await Groups.RemoveFromGroupAsync(username, documentId);
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, documentId);
         }
 
         public async Task UpdateDocument(int documentId, string title, string content, int userId)
         {
-            var updatedDoc = await _documentService.UpdateDocumentAsync(documentId, title, content, userId);
-            await Clients.Group(documentId.ToString()).SendAsync("ReceiveDocumentUpdate", updatedDoc);
+            try
+            {
+                var updatedDoc = await _documentService.UpdateDocumentAsync(documentId, title, content, userId);
+                await Clients.Group(documentId.ToString()).SendAsync("ReceiveDocumentUpdate", updatedDoc);
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                throw;
+            }
         }
 
         public async Task DeleteDocument(int documentId)

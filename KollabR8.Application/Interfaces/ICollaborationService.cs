@@ -10,7 +10,6 @@ namespace KollabR8.Application.Interfaces
     public interface ICollaborationService
     {
         Task<bool> AddCollaboratorAsync(int documentId, int userId, int collaboratorId);
-        Task<List<string>> AddMultipleCollaboratorsAsync(int documentId, int userId, List<int> collaboratorIds);
         Task<bool> RemoveCollaboratorAsync(int documentId, int userId, int collaboratorId);
         Task<List<User>> GetCollaboratorsAsync(int documentId);
     }

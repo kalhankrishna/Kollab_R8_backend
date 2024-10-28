@@ -1,4 +1,5 @@
-﻿using KollabR8.Domain.Entities;
+﻿using KollabR8.Application.DTOs;
+using KollabR8.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -23,73 +24,101 @@ namespace KollabR8.Application.Services
             _configuration = configuration;
         }
 
-        public async Task<User> RegisterAsync(string username, string email, string password)
+        public async Task<UserDto> RegisterAsync(string username, string email, string password)
         {
-            if(await _userManager.FindByEmailAsync(email) != null)
+            try
             {
-                throw new Exception("Email already exists!");
+                if (await _userManager.FindByEmailAsync(email) != null)
+                {
+                    throw new Exception("Email already exists!");
+                }
+
+                if (await _userManager.FindByNameAsync(username) != null)
+                {
+                    throw new Exception("Username already exists!");
+                }
+
+                var user = new User
+                {
+                    UserName = username,
+                    Email = email,
+                };
+
+                var result = await _userManager.CreateAsync(user, password);
+                if (!result.Succeeded)
+                {
+                    throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
+                }
+
+                var userDto = new UserDto
+                {
+                    Id = user.Id,
+                    UserName = user.UserName,
+                    Email = user.Email
+                };
+
+                return userDto;
             }
-
-            if(await _userManager.FindByNameAsync(username) != null)
+            catch
             {
-                throw new Exception("Username already exists!");
+                throw;
             }
-
-            var user = new User
-            {
-                UserName = username,
-                Email = email,
-            };
-
-            var result = await _userManager.CreateAsync(user, password);
-            if (!result.Succeeded)
-            {
-                throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
-            }
-
-            return user;
         }
 
         public async Task<string> LoginAsync(string userCredential, string password)
         {
-            var user = await _userManager.Users
-                .FirstOrDefaultAsync(u => u.Email == userCredential || u.UserName == userCredential);
-
-            if (user == null)
+            try
             {
-                throw new Exception("Invalid email or password!");
-            }
+                var isEmail = userCredential.Contains("@");
+                var user = isEmail ? await _userManager.Users.SingleOrDefaultAsync(u => u.Email == userCredential) : await _userManager.Users.SingleOrDefaultAsync(u => u.UserName == userCredential);
 
-            var isPasswordValid = await _userManager.CheckPasswordAsync(user, password);
-            if (!isPasswordValid)
+                if (user == null)
+                {
+                    throw new Exception("Invalid email or password!");
+                }
+
+                var isPasswordValid = await _userManager.CheckPasswordAsync(user, password);
+                if (!isPasswordValid)
+                {
+                    throw new Exception("Invalid email or password!");
+                }
+
+                return GenerateJwtToken(user);
+            }
+            catch
             {
-                throw new Exception("Invalid email or password!");
+                throw;
             }
-
-            return GenerateJwtToken(user);
         }
 
         public string GenerateJwtToken(User user)
         {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:SecretKey"]));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var claims = new[]
+            try
             {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email),
-        };
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Authentication:JwtSettings:SecretKey"]));
+                var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var token = new JwtSecurityToken(
-                issuer: _configuration["JwtSettings:Issuer"],
-                audience: _configuration["JwtSettings:Audience"],
-                claims: claims,
-                expires: DateTime.Now.AddMinutes(double.Parse(_configuration["JwtSettings:ExpiryInMinutes"])),
-                signingCredentials: creds
-            );
+                var claims = new[]
+                {
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),
+                };
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+                var token = new JwtSecurityToken(
+                    issuer: _configuration["Authentication:JwtSettings:Issuer"],
+                    audience: _configuration["Authentication:JwtSettings:Audience"],
+                    claims: claims,
+                    expires: DateTime.Now.AddMinutes(double.Parse(_configuration["Authentication:JwtSettings:ExpiryInMinutes"])),
+                    signingCredentials: creds
+                );
+
+                return new JwtSecurityTokenHandler().WriteToken(token);
+            }
+            catch
+            {
+                throw;
+            }
         }
     }
 }
