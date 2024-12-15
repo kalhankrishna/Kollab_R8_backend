@@ -54,9 +54,9 @@ namespace KollabR8.Application.ConnectionHub
             await base.OnDisconnectedAsync(exception);
         }
 
-        public async Task<List<string>> GetOnlineUsers()
+        public Task<List<string>> GetOnlineUsers()
         {
-            return OnlineUsers.Keys.ToList();
+            return Task.FromResult(OnlineUsers.Keys.ToList());
         }
 
         public async Task JoinDocumentGroup(string documentId)
@@ -71,16 +71,8 @@ namespace KollabR8.Application.ConnectionHub
 
         public async Task UpdateDocument(int documentId, string title, string content, int userId)
         {
-            try
-            {
-                var updatedDoc = await _documentService.UpdateDocumentAsync(documentId, title, content, userId);
-                await Clients.Group(documentId.ToString()).SendAsync("ReceiveDocumentUpdate", updatedDoc);
-            }
-            catch(Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-                throw;
-            }
+            var updatedDoc = await _documentService.UpdateDocumentAsync(documentId, title, content, userId);
+            await Clients.Group(documentId.ToString()).SendAsync("ReceiveDocumentUpdate", updatedDoc);
         }
 
         public async Task DeleteDocument(int documentId)

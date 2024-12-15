@@ -1,4 +1,5 @@
-﻿using KollabR8.Domain.Entities;
+﻿using KollabR8.Application.DTOs;
+using KollabR8.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +12,6 @@ namespace KollabR8.Application.Interfaces
     {
         Task<bool> AddCollaboratorAsync(int documentId, int userId, int collaboratorId);
         Task<bool> RemoveCollaboratorAsync(int documentId, int userId, int collaboratorId);
-        Task<List<User>> GetCollaboratorsAsync(int documentId);
+        Task<List<UserDto>> GetCollaboratorsAsync(int documentId);
     }
 }

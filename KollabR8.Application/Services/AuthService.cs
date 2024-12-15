@@ -26,99 +26,78 @@ namespace KollabR8.Application.Services
 
         public async Task<UserDto> RegisterAsync(string username, string email, string password)
         {
-            try
+            if (await _userManager.FindByEmailAsync(email) != null)
             {
-                if (await _userManager.FindByEmailAsync(email) != null)
-                {
-                    throw new Exception("Email already exists!");
-                }
-
-                if (await _userManager.FindByNameAsync(username) != null)
-                {
-                    throw new Exception("Username already exists!");
-                }
-
-                var user = new User
-                {
-                    UserName = username,
-                    Email = email,
-                };
-
-                var result = await _userManager.CreateAsync(user, password);
-                if (!result.Succeeded)
-                {
-                    throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
-                }
-
-                var userDto = new UserDto
-                {
-                    Id = user.Id,
-                    UserName = user.UserName,
-                    Email = user.Email
-                };
-
-                return userDto;
+                throw new ArgumentException("Email already exists!", nameof(email));
             }
-            catch
+
+            if (await _userManager.FindByNameAsync(username) != null)
             {
-                throw;
+                throw new ArgumentException("Username already exists!", nameof(email));
             }
+
+            var user = new User
+            {
+                UserName = username,
+                Email = email,
+            };
+
+            var result = await _userManager.CreateAsync(user, password);
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException($"User registration failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+            }
+
+            var userDto = new UserDto
+            {
+                Id = user.Id,
+                UserName = user.UserName,
+                Email = user.Email
+            };
+
+            return userDto;
         }
 
         public async Task<string> LoginAsync(string userCredential, string password)
         {
-            try
+            if (string.IsNullOrWhiteSpace(userCredential) || string.IsNullOrWhiteSpace(password))
             {
-                var isEmail = userCredential.Contains("@");
-                var user = isEmail ? await _userManager.Users.SingleOrDefaultAsync(u => u.Email == userCredential) : await _userManager.Users.SingleOrDefaultAsync(u => u.UserName == userCredential);
-
-                if (user == null)
-                {
-                    throw new Exception("Invalid email or password!");
-                }
-
-                var isPasswordValid = await _userManager.CheckPasswordAsync(user, password);
-                if (!isPasswordValid)
-                {
-                    throw new Exception("Invalid email or password!");
-                }
-
-                return GenerateJwtToken(user);
+                throw new ArgumentException("Credentials cannot be empty.", nameof(userCredential));
             }
-            catch
+
+            var user = userCredential.Contains("@")
+                ? await _userManager.Users.SingleOrDefaultAsync(u => u.Email == userCredential)
+                : await _userManager.Users.SingleOrDefaultAsync(u => u.UserName == userCredential);
+
+            if (user == null || !await _userManager.CheckPasswordAsync(user, password))
             {
-                throw;
+                throw new ArgumentException("Invalid email or password!", nameof(userCredential));
             }
+
+            return GenerateJwtToken(user);
         }
 
         public string GenerateJwtToken(User user)
         {
-            try
-            {
-                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Authentication:JwtSettings:SecretKey"]));
-                var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Authentication:JwtSettings:SecretKey"]));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-                var claims = new[]
-                {
+            var claims = new[]
+            {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                };
+            };
 
-                var token = new JwtSecurityToken(
-                    issuer: _configuration["Authentication:JwtSettings:Issuer"],
-                    audience: _configuration["Authentication:JwtSettings:Audience"],
-                    claims: claims,
-                    expires: DateTime.Now.AddMinutes(double.Parse(_configuration["Authentication:JwtSettings:ExpiryInMinutes"])),
-                    signingCredentials: creds
+            var token = new JwtSecurityToken(
+                issuer: _configuration["Authentication:JwtSettings:Issuer"],
+                audience: _configuration["Authentication:JwtSettings:Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddMinutes(double.Parse(_configuration["Authentication:JwtSettings:ExpiryInMinutes"])),
+                signingCredentials: creds
                 );
 
-                return new JwtSecurityTokenHandler().WriteToken(token);
-            }
-            catch
-            {
-                throw;
-            }
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }

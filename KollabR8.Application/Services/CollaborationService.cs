@@ -22,101 +22,96 @@ namespace KollabR8.Application.Services
 
         public async Task<bool> AddCollaboratorAsync(int documentId, int userId, int collaboratorId)
         {
-            try
+            var document = await _dbContext.Documents.Include(d => d.Owner).Include(d => d.Collaborators).FirstOrDefaultAsync(d => d.Id == documentId);
+            var user = await _dbContext.Users.FindAsync(userId);
+
+            if (document == null)
             {
-                var document = await _dbContext.Documents.Include(d => d.Owner).Include(d => d.Collaborators).FirstOrDefaultAsync(d => d.Id == documentId);
-                var user = await _dbContext.Users.FindAsync(userId);
-
-                if (document == null)
-                {
-                    throw new Exception("Document not found!");
-                }
-
-                if (document.Owner != user)
-                {
-                    throw new UnauthorizedAccessException("Only the document owner can add collaborators!");
-                }
-
-                var collaborator = await _dbContext.Users.FindAsync(collaboratorId);
-
-                if (collaborator == null)
-                {
-                    throw new Exception("Collaborator not found!");
-                }
-
-                if (!document.Collaborators.Contains(collaborator))
-                {
-                    document.Collaborators.Add(collaborator);
-                    await _dbContext.SaveChangesAsync();
-                    return true;
-                }
-
-                return false;
+                throw new Exception("Document not found!");
             }
-            catch
+
+            if (document.Owner != user)
             {
-                throw;
+                throw new UnauthorizedAccessException("Only the document owner can add collaborators!");
             }
+
+            var collaborator = await _dbContext.Users.FindAsync(collaboratorId);
+
+            if (collaborator == null)
+            {
+                throw new Exception("Collaborator not found!");
+            }
+
+            if (!document.Collaborators.Contains(collaborator))
+            {
+                document.Collaborators.Add(collaborator);
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+
+            return false;
         }
 
         public async Task<bool> RemoveCollaboratorAsync(int documentId, int userId, int collaboratorId)
         {
-            try
+            var document = await _dbContext.Documents.Include(d => d.Owner).Include(d => d.Collaborators).FirstOrDefaultAsync(d => d.Id == documentId);
+            var user = await _dbContext.Users.FindAsync(userId);
+
+            if (document == null)
             {
-                var document = await _dbContext.Documents.Include(d => d.Owner).Include(d => d.Collaborators).FirstOrDefaultAsync(d => d.Id == documentId);
-                var user = await _dbContext.Users.FindAsync(userId);
-
-                if (document == null)
-                {
-                    throw new Exception("Document not found!");
-                }
-
-                if (document.Owner != user)
-                {
-                    throw new UnauthorizedAccessException("Only the document owner can add collaborators!");
-                }
-
-                var collaborator = await _dbContext.Users.FindAsync(collaboratorId);
-
-                if (collaborator == null)
-                {
-                    throw new Exception("Collaborator not found!");
-                }
-
-                if (document.Collaborators.Contains(collaborator))
-                {
-                    document.Collaborators.Remove(collaborator);
-                    await _dbContext.SaveChangesAsync();
-                    return true;
-                }
-
-                return false;
+                throw new Exception("Document not found!");
             }
-            catch
+
+            if (document.Owner != user)
             {
-                throw;
+                throw new UnauthorizedAccessException("Only the document owner can add collaborators!");
             }
+
+            var collaborator = await _dbContext.Users.FindAsync(collaboratorId);
+
+            if (collaborator == null)
+            {
+                throw new Exception("Collaborator not found!");
+            }
+
+            if (document.Collaborators.Contains(collaborator))
+            {
+                document.Collaborators.Remove(collaborator);
+                await _dbContext.SaveChangesAsync();
+                return true;
+            }
+
+            return false;
         }
 
-        public async Task<List<User>> GetCollaboratorsAsync(int documentId)
+        public async Task<List<UserDto>> GetCollaboratorsAsync(int documentId)
         {
-            try
-            {
-                var document = await _dbContext.Documents
-                .Include(d => d.Collaborators)
-                .FirstOrDefaultAsync(d => d.Id == documentId);
+            var document = await _dbContext.Documents
+            .Include(d => d.Collaborators)
+            .FirstOrDefaultAsync(d => d.Id == documentId);
 
-                if (document == null)
+            if (document == null)
+            {
+                throw new Exception("Document not found");
+            }
+
+            var collaborators =  document.Collaborators.ToList();
+
+            var users = new List<UserDto>();
+
+            foreach( var collaborator in collaborators)
+            {
+                var user = new UserDto
                 {
-                    throw new Exception("Document not found");
-                }
+                    Id = collaborator.Id,
+                    Email = collaborator.Email,
+                    UserName = collaborator.UserName
+                };
 
-                return document.Collaborators.ToList();
+                users.Add(user);
             }
-            catch
-            {
-                throw;
-            }
+
+            return users;
         }
     }
 }

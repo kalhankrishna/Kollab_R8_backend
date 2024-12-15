@@ -33,7 +33,7 @@ namespace KollabR8.Controllers
             try
             {
                 var result = await _authService.RegisterAsync(registerDto.UserName, registerDto.Email, registerDto.Password);
-                return Ok(result);
+                return CreatedAtAction(nameof(Login), new LoginReqDto { UserNameOrEmail = result.Email, Password = registerDto.Password });
             }
             catch(Exception ex)
             {
@@ -58,7 +58,7 @@ namespace KollabR8.Controllers
             catch(Exception ex)
             {
                 Console.WriteLine(ex.Message);
-                return StatusCode(401, "Failed to authenticate user");
+                return Unauthorized("Failed to authenticate user");
             }
         }
     }
