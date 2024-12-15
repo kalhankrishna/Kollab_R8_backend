@@ -131,7 +131,7 @@ namespace KollabR8.Controllers
         }
 
         [HttpPut("modify-access")]
-        public async Task<IActionResult> ModifyAccess([FromBody]int documentId, [FromBody]string accessLevel)
+        public async Task<IActionResult> ModifyAccess([FromQuery]int documentId, [FromBody]string accessLevel)
         {
             try
             {
