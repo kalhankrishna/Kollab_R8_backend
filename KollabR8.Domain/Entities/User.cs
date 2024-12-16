@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace KollabR8.Domain.Entities
@@ -10,9 +11,11 @@ namespace KollabR8.Domain.Entities
     public class User : IdentityUser<int>
     {
         // Navigation property for documents owned by the user
+        [JsonIgnore]
         public ICollection<Document> OwnedDocuments { get; set; }
 
         // Navigation property for documents the user collaborates on
+        [JsonIgnore]
         public ICollection<Document> CollaboratingDocuments { get; set; }
     }
 

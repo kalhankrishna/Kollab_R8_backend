@@ -89,7 +89,7 @@ namespace KollabR8.Application.Services
 
             var user = await _dbContext.Users.FindAsync(userId);
 
-            if (document.Owner != user || !document.Collaborators.Contains(user) || document.Access != "Public")
+            if (document.Owner != user && !document.Collaborators.Contains(user) && document.Access != "Public")
             {
                 throw new UnauthorizedAccessException("You do not have permission to view this document!");
             }

@@ -37,9 +37,10 @@ namespace KollabR8.Controllers
                     return BadRequest(ModelState);
                 }
 
-                var userId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub));
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
                 var docId = await _documentService.CreateDocumentAsync(documentDto.Title, documentDto.Access, userId, documentDto.CollaboratorIds);
-                return CreatedAtAction(nameof(GetDocument), new { Id = docId });
+                return CreatedAtAction(nameof(GetDocument), new { id = docId }, docId);
             }
             catch(Exception ex)
             {
@@ -49,11 +50,12 @@ namespace KollabR8.Controllers
         }
 
         [HttpGet("{id}")]
+        //[ActionName(nameof(GetDocument))]
         public async Task<IActionResult> GetDocument(int id)
         {
             try
             {
-                var userId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub));
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                 var document = await _documentService.GetDocumentbyIdAsync(id, userId);
                 if (document == null)
                 {
@@ -64,7 +66,7 @@ namespace KollabR8.Controllers
             catch(UnauthorizedAccessException ex)
             {
                 Console.WriteLine(ex.Message);
-                return Forbid("You do not have permission to view this document.");
+                return Forbid("Bearer", ex.Message);
             }
             catch(Exception ex)
             {
@@ -83,7 +85,7 @@ namespace KollabR8.Controllers
                     return BadRequest(ModelState);
                 }
 
-                var userId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub));
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                 var document = await _documentService.UpdateDocumentAsync(id, documentDto.Title, documentDto.content, userId);
                 if (document == null)
                 {
@@ -94,7 +96,7 @@ namespace KollabR8.Controllers
             catch(UnauthorizedAccessException ex)
             {
                 Console.WriteLine(ex.Message);
-                return Forbid("You do not have permission to modify this document.");
+                return Forbid("Bearer", ex.Message);
             }
             catch(Exception ex)
             {
@@ -108,7 +110,7 @@ namespace KollabR8.Controllers
         {
             try
             {
-                var userId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub));
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                 bool result = await _documentService.DeleteDocumentAsync(id, userId);
 
                 if (!result)
@@ -121,7 +123,7 @@ namespace KollabR8.Controllers
             catch(UnauthorizedAccessException ex)
             {
                 Console.WriteLine(ex.Message);
-                return Forbid("You do not have permission to delete this document.");
+                return Forbid("Bearer", ex.Message);
             }
             catch(Exception ex)
             {
@@ -135,7 +137,7 @@ namespace KollabR8.Controllers
         {
             try
             {
-                var userId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub));
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                 bool result = await _documentService.ModifyAccessAsync(documentId, userId, accessLevel);
 
                 if (!result)
@@ -148,7 +150,7 @@ namespace KollabR8.Controllers
             catch(UnauthorizedAccessException ex)
             {
                 Console.WriteLine(ex.Message);
-                return Forbid("You do not have permission to modify the access of this document.");
+                return Forbid("Bearer", ex.Message);
             }
             catch(Exception ex)
             {
@@ -162,7 +164,7 @@ namespace KollabR8.Controllers
         {
             try
             {
-                var userId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub));
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                 var ownedDocs = await _documentService.GetOwnedDocumentsbyUser(userId);
 
                 if (ownedDocs != null)
@@ -185,7 +187,7 @@ namespace KollabR8.Controllers
         {
             try
             {
-                var userId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub));
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                 var collabDocs = await _documentService.GetCollaboratingDocumentsbyUser(userId);
 
                 if (collabDocs != null)
@@ -207,7 +209,7 @@ namespace KollabR8.Controllers
         {
             try
             {
-                var userId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub));
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                 bool result = await _collaborationService.AddCollaboratorAsync(documentId, userId, collaboratorId);
 
                 if (result)
@@ -220,7 +222,7 @@ namespace KollabR8.Controllers
             catch (UnauthorizedAccessException ex)
             {
                 Console.WriteLine(ex.Message);
-                return Forbid(ex.Message);
+                return Forbid("Bearer", ex.Message);
             }
             catch (Exception ex)
             {
@@ -234,7 +236,7 @@ namespace KollabR8.Controllers
         {
             try
             {
-                var userId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub));
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                 bool result = await _collaborationService.RemoveCollaboratorAsync(documentId, userId, collaboratorId);
 
                 if (result)
@@ -247,7 +249,7 @@ namespace KollabR8.Controllers
             catch (UnauthorizedAccessException ex)
             {
                 Console.WriteLine(ex.Message);
-                return Forbid(ex.Message);
+                return Forbid("Bearer", ex.Message);
             }
             catch (Exception ex)
             {

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace KollabR8.Domain.Entities
@@ -17,9 +18,12 @@ namespace KollabR8.Domain.Entities
 
         // Foreign key for the owner of the document
         public int OwnerId { get; set; }
+
+        [JsonIgnore]
         public User Owner { get; set; }
 
         // Collaborators list (many-to-many relationship)
+        [JsonIgnore]
         public ICollection<User> Collaborators { get; set; }
     }
 
