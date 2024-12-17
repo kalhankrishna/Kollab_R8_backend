@@ -10,7 +10,9 @@ namespace KollabR8.Application.Interfaces
 {
     public interface IDocumentService
     {
+#nullable enable
         Task<int> CreateDocumentAsync(string title, string accessLevel, int ownerId, List<int>? collaboratorIds=null);
+#nullable disable
         Task<DocumentDto> GetDocumentbyIdAsync(int documentId, int userId);
         Task<DocumentDto> UpdateDocumentAsync(int documentId, string title, string content, int userId);
         Task<bool> DeleteDocumentAsync(int documentId, int userId);

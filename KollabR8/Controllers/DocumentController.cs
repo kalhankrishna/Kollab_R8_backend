@@ -40,7 +40,7 @@ namespace KollabR8.Controllers
                 var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
                 var docId = await _documentService.CreateDocumentAsync(documentDto.Title, documentDto.Access, userId, documentDto.CollaboratorIds);
-                return CreatedAtAction(nameof(GetDocument), new { id = docId }, docId);
+                return CreatedAtAction(nameof(GetDocument), new { id = docId });
             }
             catch(Exception ex)
             {
@@ -49,8 +49,7 @@ namespace KollabR8.Controllers
             }
         }
 
-        [HttpGet("{id}")]
-        //[ActionName(nameof(GetDocument))]
+        [HttpGet("document")]
         public async Task<IActionResult> GetDocument(int id)
         {
             try
@@ -160,11 +159,10 @@ namespace KollabR8.Controllers
         }
 
         [HttpGet("get-owned-documents")]
-        public async Task<IActionResult> GetOwnedDocuments()
+        public async Task<IActionResult> GetOwnedDocuments([FromQuery]int userId)
         {
             try
             {
-                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                 var ownedDocs = await _documentService.GetOwnedDocumentsbyUser(userId);
 
                 if (ownedDocs != null)
@@ -183,11 +181,10 @@ namespace KollabR8.Controllers
         }
 
         [HttpGet("get-collaborating-documents")]
-        public async Task<IActionResult> GetCollaboratingDocuments()
+        public async Task<IActionResult> GetCollaboratingDocuments([FromQuery] int userId)
         {
             try
             {
-                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                 var collabDocs = await _documentService.GetCollaboratingDocumentsbyUser(userId);
 
                 if (collabDocs != null)
@@ -195,7 +192,7 @@ namespace KollabR8.Controllers
                     return Ok(collabDocs);
                 }
 
-                return NotFound("This user has no documents where they are a collaborator.");
+                return NotFound("No documents found where this user is a collaborator.");
             }
             catch(Exception ex)
             {
@@ -214,7 +211,7 @@ namespace KollabR8.Controllers
 
                 if (result)
                 {
-                    return Ok("Collaborator added successfully.");
+                    return Ok("Collaborator has been added successfully.");
                 }
 
                 return BadRequest("Collaborator has already been added.");

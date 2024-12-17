@@ -1,4 +1,5 @@
-﻿using KollabR8.Application.ConnectionHub;
+﻿using AutoMapper;
+using KollabR8.Application.ConnectionHub;
 using KollabR8.Application.DTOs;
 using KollabR8.Application.Interfaces;
 using KollabR8.Domain.Entities;
@@ -19,11 +20,13 @@ namespace KollabR8.Application.Services
         private readonly AppDbContext _dbContext;
         private readonly string _documentsRootPath;
         private readonly IHubContext<DocumentHub> _hubContext;
+        private readonly IMapper _mapper;
 
-        public DocumentService(AppDbContext dbContext, IWebHostEnvironment environment, IHubContext<DocumentHub> hubContext)
+        public DocumentService(AppDbContext dbContext, IWebHostEnvironment environment, IHubContext<DocumentHub> hubContext, IMapper mapper)
         {
             _dbContext = dbContext;
             _hubContext = hubContext;
+            _mapper = mapper;
             _documentsRootPath = Path.Combine(environment.ContentRootPath, "Documents");
 
             // Ensure the Documents folder exists
@@ -96,19 +99,9 @@ namespace KollabR8.Application.Services
 
             var contentJson = await File.ReadAllTextAsync(document.FilePath);
 
-            var documentDto = new DocumentDto
-            {
-                Id = documentId,
-                Title = document.Title,
-                FilePath = document.FilePath,
-                Content = contentJson,
-                CreatedAt = document.CreatedAt,
-                LastUpdatedAt = document.LastUpdatedAt,
-                Access = document.Access,
-                OwnerId = document.OwnerId,
-                Owner = document.Owner,
-                Collaborators = document.Collaborators
-            };
+            var documentDto = _mapper.Map<DocumentDto>(document);
+
+            documentDto.Content = contentJson;
 
             return documentDto;
         }
@@ -123,7 +116,7 @@ namespace KollabR8.Application.Services
                 throw new Exception("Document not found!");
             }
 
-            if ((document.Collaborators != null && !document.Collaborators.Contains(updatingUser)) || document.Owner != updatingUser)
+            if ((document.Collaborators != null && !document.Collaborators.Contains(updatingUser)) && document.Owner != updatingUser)
             {
                 throw new UnauthorizedAccessException("You do not have permission to modify this document!");
             }
@@ -136,19 +129,8 @@ namespace KollabR8.Application.Services
             _dbContext.Documents.Update(document);
             await _dbContext.SaveChangesAsync();
 
-            var documentDto = new DocumentDto
-            {
-                Id = documentId,
-                Title = document.Title,
-                FilePath = document.FilePath,
-                Content = await File.ReadAllTextAsync(document.FilePath),
-                CreatedAt = document.CreatedAt,
-                LastUpdatedAt = document.LastUpdatedAt,
-                Access = document.Access,
-                OwnerId = document.OwnerId,
-                Owner = document.Owner,
-                Collaborators = document.Collaborators
-            };
+            var documentDto = _mapper.Map<DocumentDto>(document);
+            documentDto.Content = content;
 
             //await _hubContext.Clients.Group(documentId.ToString()).SendAsync("NotifyDocumentUpdated", documentDto);
 
@@ -193,50 +175,14 @@ namespace KollabR8.Application.Services
         public async Task<List<DocumentDto>> GetOwnedDocumentsbyUser(int userId)
         {
             var documents = await _dbContext.Documents.Include(d=>d.Owner).Include(d=>d.Collaborators).Where(d=>d.OwnerId==userId).ToListAsync();
-            var docDtos = new List<DocumentDto>();
-
-            foreach(var doc in documents)
-            {
-                var docDto = new DocumentDto
-                {
-                    Id = doc.Id,
-                    Title = doc.Title,
-                    FilePath = doc.FilePath,
-                    CreatedAt = doc.CreatedAt,
-                    LastUpdatedAt = doc.LastUpdatedAt,
-                    Access = doc.Access,
-                    OwnerId = doc.OwnerId,
-                    Owner = doc.Owner,
-                    Collaborators = doc.Collaborators
-                };
-                docDtos.Add(docDto);
-            }
-
+            List<DocumentDto> docDtos = _mapper.Map<List<DocumentDto>>(documents);
             return docDtos;
         }
 
         public async Task<List<DocumentDto>> GetCollaboratingDocumentsbyUser(int userId)
         {
             var documents = await _dbContext.Documents.Include(d => d.Owner).Include(d => d.Collaborators).Where(d => d.Collaborators.Any(c => c.Id == userId)).ToListAsync();
-            var docDtos = new List<DocumentDto>();
-
-            foreach (var doc in documents)
-            {
-                var docDto = new DocumentDto
-                {
-                    Id = doc.Id,
-                    Title = doc.Title,
-                    FilePath = doc.FilePath,
-                    CreatedAt = doc.CreatedAt,
-                    LastUpdatedAt = doc.LastUpdatedAt,
-                    Access = doc.Access,
-                    OwnerId = doc.OwnerId,
-                    Owner = doc.Owner,
-                    Collaborators = doc.Collaborators
-                };
-                docDtos.Add(docDto);
-            }
-
+            List<DocumentDto> docDtos = _mapper.Map<List<DocumentDto>>(documents);
             return docDtos;
         }
 

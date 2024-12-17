@@ -1,4 +1,5 @@
-﻿using KollabR8.Application.DTOs;
+﻿using AutoMapper;
+using KollabR8.Application.DTOs;
 using KollabR8.Application.Interfaces;
 using KollabR8.Domain.Entities;
 using KollabR8.Infrastructure;
@@ -14,10 +15,12 @@ namespace KollabR8.Application.Services
     public class CollaborationService : ICollaborationService
     {
         private readonly AppDbContext _dbContext;
+        private readonly IMapper _mapper;
 
-        public CollaborationService(AppDbContext dbContext)
+        public CollaborationService(AppDbContext dbContext, IMapper mapper)
         {
             _dbContext = dbContext;
+            _mapper = mapper;
         }
 
         public async Task<bool> AddCollaboratorAsync(int documentId, int userId, int collaboratorId)
@@ -97,21 +100,9 @@ namespace KollabR8.Application.Services
 
             var collaborators =  document.Collaborators.ToList();
 
-            var users = new List<UserDto>();
+            List<UserDto> collaboratorDtos = _mapper.Map<List<UserDto>>(collaborators);
 
-            foreach( var collaborator in collaborators)
-            {
-                var user = new UserDto
-                {
-                    Id = collaborator.Id,
-                    Email = collaborator.Email,
-                    UserName = collaborator.UserName
-                };
-
-                users.Add(user);
-            }
-
-            return users;
+            return collaboratorDtos;
         }
     }
 }

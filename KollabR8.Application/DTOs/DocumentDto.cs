@@ -15,8 +15,8 @@ namespace KollabR8.Application.DTOs
         public DateTime LastUpdatedAt { get; set; }
         public string Access { get; set; }
         public int OwnerId { get; set; }
-        public User Owner { get; set; }
-        public ICollection<User> Collaborators { get; set; }
+        public UserDto Owner { get; set; }
+        public ICollection<UserDto> Collaborators { get; set; }
     }
 
     public class CreateDocumentDto
@@ -25,7 +25,9 @@ namespace KollabR8.Application.DTOs
         public string Title { get; set; }
         [Required]
         public string Access { get; set; }
+#nullable enable
         public List<int>? CollaboratorIds { get; set; }
+#nullable disable
     }
 
     public class UpdateDocumentDto

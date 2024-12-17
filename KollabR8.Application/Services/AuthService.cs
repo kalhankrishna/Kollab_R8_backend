@@ -1,4 +1,5 @@
-﻿using KollabR8.Application.DTOs;
+﻿using AutoMapper;
+using KollabR8.Application.DTOs;
 using KollabR8.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -17,11 +18,13 @@ namespace KollabR8.Application.Services
     {
         private readonly UserManager<User> _userManager;
         private readonly IConfiguration _configuration;
+        private readonly IMapper _mapper;
 
-        public AuthService(UserManager<User> userManager, IConfiguration configuration)
+        public AuthService(UserManager<User> userManager, IConfiguration configuration, IMapper mapper)
         {
             _userManager = userManager;
             _configuration = configuration;
+            _mapper = mapper;
         }
 
         public async Task<UserDto> RegisterAsync(string username, string email, string password)
@@ -48,12 +51,7 @@ namespace KollabR8.Application.Services
                 throw new InvalidOperationException($"User registration failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
             }
 
-            var userDto = new UserDto
-            {
-                Id = user.Id,
-                UserName = user.UserName,
-                Email = user.Email
-            };
+            var userDto = _mapper.Map<UserDto>(user);
 
             return userDto;
         }

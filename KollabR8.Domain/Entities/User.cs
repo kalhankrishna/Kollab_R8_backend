@@ -11,11 +11,9 @@ namespace KollabR8.Domain.Entities
     public class User : IdentityUser<int>
     {
         // Navigation property for documents owned by the user
-        [JsonIgnore]
         public ICollection<Document> OwnedDocuments { get; set; }
 
         // Navigation property for documents the user collaborates on
-        [JsonIgnore]
         public ICollection<Document> CollaboratingDocuments { get; set; }
     }
 

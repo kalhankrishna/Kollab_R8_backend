@@ -1,5 +1,7 @@
+using AutoMapper;
 using KollabR8.Application;
 using KollabR8.Application.ConnectionHub;
+using KollabR8.Application.DTOs;
 using KollabR8.Application.Interfaces;
 using KollabR8.Application.Services;
 using KollabR8.Domain.Entities;
@@ -39,7 +41,17 @@ namespace KollabR8
         {
             services.AddSignalR();
             services.AddControllers();
-            //services.Configure<JwtSettings>(Configuration.GetSection("JwtSettings"));
+
+            var config = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<User, UserDto>();
+                cfg.CreateMap<Document, DocumentDto>();
+            });
+
+            var mapper = config.CreateMapper();
+
+            services.AddSingleton(mapper);
+
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "KollabR8", Version = "v1" });
